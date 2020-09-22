@@ -1,5 +1,5 @@
 # BimAktuelGetter
-A script based on Python language that get list of all products from BİM web site by given 'aktüel' ID. And exports it in some format.
+A script based on Python language that gets list of all products from BİM web site by given 'aktüel' ID. And exports it in some format.
 
 ## Required Libraries
 - requests
