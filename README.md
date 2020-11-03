@@ -4,9 +4,7 @@ A script based on Python language that gets list of all products from BİM web s
 ## Required Libraries
 - requests
 - bs4
-- requote_uri
-- etree
-- urlparse
+- urljoin
 
 ## Notes
-- This project is only supports website of 'BİM' which active in Turkey. This code written a year ago and coded poorly back then, needs a remake.
+- This project is only supports website of 'BİM' which active in Turkey.
