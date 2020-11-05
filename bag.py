@@ -27,30 +27,33 @@ class Bim:
         self.product_names = []  # for a special need
         self.product_operations = self.Product()
 
-    def input_aktuel_key(self):
+    @staticmethod
+    def input_aktuel_key():
         return input('AktuelTarihKey= ')
 
-    def input_aktuel_name(self):
+    @staticmethod
+    def input_aktuel_name():
         return input('AktuelTarih= ')
 
-    def get_content(self, url):
-        _url = ''
+    @staticmethod
+    def get_content(url):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
-        try:
-            counter = 0
-            while _url != url:  # bim bazen anasayfaya yönlendirme yapiyor
-                counter += 1
+        counter = 3
+        while counter != 0:  # bim bazen anasayfaya yönlendirme yapiyor
+            try:
                 page = requests.get(url, timeout=10, headers=headers)
                 _url = page.url
-                if counter == 3:
-                    if _url != url:
-                        return BeautifulSoup('', "lxml")
-                    break
-            page_content = BeautifulSoup(page.content, "lxml")
-            return page_content
-        except requests.exceptions.ConnectionError as e:
-            raise
+                if _url != url:
+                    print(counter, end='')
+                    counter -= 1  # try 'counter' times if site redirecting to somewhere
+                    continue
+                counter = 0
+                return BeautifulSoup(page.content, "lxml")
+            except Exception as e:  # try always if some connection error occurred
+                print('-', end='')
+        print('')
+        return BeautifulSoup('', "lxml")
 
     def get_all_products(self):
         page_content = self.get_content(self.url + self.aktuel_query + self.aktuel_key)
@@ -58,93 +61,111 @@ class Bim:
         print(len(product_contents), 'aktuels found!\n')
 
         for product_id, product_content in zip(range(len(product_contents)), product_contents):
-            self.add_features_from_list(product_id, product_content)
-            self.add_features_from_detail(product_id)
-
-            self.products[product_id]['features'] = self.product_operations.get_optimized_list(
-                self.products[product_id]['features'])
-
-            # print(self.products[product_id])
+            product = Bim.get_product(product_content)
+            self.products[product_id] = product
 
             # for some special usages
-            kiyasla_style = {"u": self.product_operations.get_product_name(self.products[product_id], 120),
-                             "f": self.products[product_id]['price'],
-                             "k": self.products[product_id]['image']}
+            kiyasla_style = {"u": Bim.Product.get_product_name(product, 120),
+                             "f": product['price'],
+                             "k": product['image']}
             self.kiyasla_products.append(kiyasla_style)
-            if self.products[product_id]['name'].strip() not in self.product_names:
-                self.product_names.append(self.products[product_id]['name'].strip())
+
+            if product['name'].strip() not in self.product_names:
+                self.product_names.append(product['name'].strip())
             print(kiyasla_style['u'], kiyasla_style['f'])
 
         return self.products
 
-    def add_features_from_list(self, product_id, product_content):
+    @staticmethod
+    def get_product(product_content):
+        product = Bim.add_features_from_list(product_content)
+        product = Bim.add_features_from_detail(product)
+        product['features'] = Bim.Product.get_optimized_list(product['features'])
 
-        product_brand = product_content.find("div", "descArea").find("h2", "subTitle").text \
-            if product_content.find("div", "descArea").find("h2", "subTitle") else ''
-        product_name = product_content.find("div", "descArea").find("h2", "title").text \
-            if product_content.find("div", "descArea").find("h2", "title") else ''
-        product_price_left = product_content.find("div", "quantify").text.replace(".", '').replace(",", ".").strip() \
-            if product_content.find("div", "quantify") else ''
-        product_price_right = product_content.find("div", "kusurArea").find("span", "number").text.strip() \
-            if product_content.find("div", "kusurArea").find("span", "number") else ''
-        product_price = product_price_left + product_price_right
-        product_link = urljoin(self.url, product_content.find("div", "imageArea").find("a")['href'])
-        features = []
+        return product
 
-        for feature in product_content.find("div", "textArea").select('span.text'):
-            feature = feature.text
-            if feature.find(',') > -1 and \
-                    feature.find(',') + 1 < len(feature) and \
-                    not feature[feature.find(',') + 1].isdigit():
-                mini_features = feature.split(',')
-                for mini_feature in mini_features:
-                    mini_feature = self.product_operations.get_optimized_text(
-                        mini_feature.replace('•', '').replace('’', "'"))
-                    if mini_feature.lower() in product_name.lower():
+    @staticmethod
+    def add_features_from_list(product_content):
+        try:
+            product_brand = product_content.find("div", "descArea").find("h2", "subTitle").text \
+                if product_content.find("div", "descArea").find("h2", "subTitle") else ''
+            product_name = product_content.find("div", "descArea").find("h2", "title").text \
+                if product_content.find("div", "descArea").find("h2", "title") else ''
+            product_price_left = product_content.find("div", "quantify").text.replace(".", '').replace(",", ".").strip() \
+                if product_content.find("div", "quantify") else ''
+            product_price_right = product_content.find("div", "kusurArea").find("span", "number").text.strip() \
+                if product_content.find("div", "kusurArea").find("span", "number") else ''
+            product_price = product_price_left + product_price_right
+            product_link = urljoin(Bim.url, product_content.find("div", "imageArea").find("a")['href'])
+            features = []
+
+            for feature in product_content.find("div", "textArea").select('span.text'):
+                feature = feature.text
+                if feature.find(',') > -1 and \
+                        feature.find(',') + 1 < len(feature) and \
+                        not feature[feature.find(',') + 1].isdigit():
+                    mini_features = feature.split(',')
+                    for mini_feature in mini_features:
+                        mini_feature = Bim.Product.get_optimized_text(
+                            mini_feature.replace('•', '').replace('’', "'"))
+                        if mini_feature.lower() in product_name.lower():
+                            continue
+                        else:
+                            features.append(mini_feature)
+                else:
+                    feature = Bim.Product.get_optimized_text(
+                        feature.replace('•', '').replace('’', "'"))
+                    if feature.lower() in product_name.lower():
                         continue
                     else:
-                        features.append(mini_feature)
-            else:
-                feature = self.product_operations.get_optimized_text(feature.replace('•', '').replace('’', "'"))
-                if feature.lower() in product_name.lower():
-                    continue
+                        features.append(feature)
+
+            return {'brand': product_brand, 'name': product_name, 'features': features,
+                    'price': product_price, 'image': '', 'url': product_link}
+        except Exception as e:
+            print("add_features_from_list", e)
+            raise
+
+    @staticmethod
+    def add_features_from_detail(product):
+        try:
+            page_content = Bim.get_content(product['url'])
+            product_detail = page_content.find("div", "detailArea")
+            product_image = urljoin(Bim.url, product_detail.find("a", "fotoZoom")['data-src'])
+            features = []
+
+            for feature in product_detail.find("div", 'textArea').text.split('\n'):  # ÜRÜN ÖZELLIKLERINI ÇEKMEK
+                if feature.find(',') > -1 and \
+                        feature.find(',') + 1 < len(feature) and \
+                        not feature[feature.find(',') + 1].isdigit():
+                    mini_features = feature.split(',')
+                    for mini_feature in mini_features:
+                        mini_feature = Bim.Product.get_optimized_text(
+                            mini_feature.replace('•', '').replace('’', "'"))
+                        if mini_feature.lower() in product['name'].lower():
+                            continue
+                        else:
+                            features.append(mini_feature)
                 else:
-                    features.append(feature)
-
-        self.products[product_id] = {'brand': product_brand, 'name': product_name, 'features': features,
-                                     'price': product_price, 'image': '', 'url': product_link}
-
-    def add_features_from_detail(self, product_id):
-        page_content = self.get_content(self.products[product_id]['url'])
-        product_detail = page_content.find("div", "detailArea")
-        product_image = urljoin(self.url, product_detail.find("a", "fotoZoom")['data-src'])
-        features = []
-
-        for feature in product_detail.find("div", 'textArea').text.split('\n'):  # ÜRÜN ÖZELLIKLERINI ÇEKMEK
-            if feature.find(',') > -1 and \
-                    feature.find(',') + 1 < len(feature) and \
-                    not feature[feature.find(',') + 1].isdigit():
-                mini_features = feature.split(',')
-                for mini_feature in mini_features:
-                    mini_feature = self.product_operations.get_optimized_text(
-                        mini_feature.replace('•', '').replace('’', "'"))
-                    if mini_feature.lower() in self.products[product_id]['name'].lower():
+                    feature = Bim.Product.get_optimized_text(
+                        feature.replace('•', '').replace('’', "'"))
+                    if feature.lower() in product['name'].lower():
                         continue
                     else:
-                        features.append(mini_feature)
-            else:
-                feature = self.product_operations.get_optimized_text(feature.replace('•', '').replace('’', "'"))
-                if feature.lower() in self.products[product_id]['name'].lower():
-                    continue
-                else:
-                    features.append(feature)
+                        features.append(feature)
 
-        self.products[product_id]['image'] = product_image
-        self.products[product_id]['features'] += features
+            product['image'] = product_image
+            product['features'] += features
+
+            return product
+        except Exception as e:
+            print("add_features_from_detail", e)
+            raise
 
     class Product:
 
-        def is_quantity(self, text):
+        @staticmethod
+        def is_quantity(text):
             volumes = ['ml', 'kg', 'l', 'lt', 'g', 'gr', 'cc', 'cm', 'mah', 'mah', 'w', 'db', 'mm', 'watt', 'gb']
             quantities = ["'lı", "'li", "'lu", "'lü", "kapsül", "in 1", "in 1", "numara", "yaş", "adet", "yıkama",
                           "yaprak", "çeşit"]
@@ -204,12 +225,13 @@ class Bim:
                     return True
             return False
 
-        def get_product_name(self, product, char_limit):
+        @staticmethod
+        def get_product_name(product, char_limit):
             brand = product['brand']
             name = product['name']
             features = product['features']
 
-            final_name = self.get_optimized_text(brand + ' ' + name)
+            final_name = Bim.Product.get_optimized_text(brand + ' ' + name)
             features_to_add = []
             char_counter = len(
                 final_name) + 3  # else durumunda eklenen ' - ' karakterleri için +3 yapildi, diger durumlarda sayac gecersiz zaten
@@ -229,21 +251,23 @@ class Bim:
                         break
                 return final_name + ' - ' + ', '.join(features_to_add)
 
-        def get_optimized_list(self, _list):
+        @staticmethod
+        def get_optimized_list(_list):
             # print('in', _list)
             new_list = []
 
             for element in _list:
                 if element.lower() not in [el.lower() for el in new_list] and not any(
                         element != el and element in el for el in _list):
-                    if self.is_quantity(element.lower()):
+                    if Bim.Product.is_quantity(element.lower()):
                         new_list.insert(0, element)
                     else:
                         new_list.append(element)
             # print('out', new_list)
             return new_list
 
-        def get_optimized_text(self, string):
+        @staticmethod
+        def get_optimized_text(string):
             cleaned_string = ' '.join(string.split())
             return cleaned_string
 
