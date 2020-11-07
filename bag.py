@@ -42,7 +42,7 @@ class Bim:
         counter = 3
         while counter != 0:  # bim bazen anasayfaya yönlendirme yapiyor
             try:
-                page = requests.get(url, timeout=10, headers=headers)
+                page = requests.get(url, timeout=3, headers=headers)
                 _url = page.url
                 if _url != url:
                     print(counter, end='')
@@ -166,57 +166,35 @@ class Bim:
 
         @staticmethod
         def is_quantity(text):
-            volumes = ['ml', 'kg', 'l', 'lt', 'g', 'gr', 'cc', 'cm', 'mah', 'mah', 'w', 'db', 'mm', 'watt', 'gb']
-            quantities = ["'lı", "'li", "'lu", "'lü", "kapsül", "in 1", "in 1", "numara", "yaş", "adet", "yıkama",
+            volumes = ['ml', 'kg', 'l', 'lt', 'g', 'gr', 'cc', 'cm', 'mah', 'w', 'db', 'mm', 'watt', 'gb']
+            quantities = ["'lı", "'li", "'lu", "'lü", "kapsül", "in 1", "numara", "yaş", "adet", "yıkama",
                           "yaprak", "çeşit"]
             words = ["beden"]
+            for feature_types in [volumes, quantities]:
+                for feature in feature_types:
+                    occurrences = [m.start() for m in re.finditer(feature, text)]
+                    for occurrence in occurrences:
+                        if feature in text and occurrence - 1 > -1 and \
+                                (
+                                        (
+                                                text[occurrence - 1].isdigit() and
+                                                (
+                                                        occurrence + len(feature) == len(text) or
+                                                        text[occurrence + len(feature)] == ' '
+                                                )
+                                        ) or
+                                        (
+                                                text[occurrence - 1] == ' ' and
+                                                occurrence - 2 > -1 and
+                                                text[occurrence - 2].isdigit() and
+                                                (
+                                                        occurrence + len(feature) == len(text) or
+                                                        text[occurrence + len(feature)] == ' '
+                                                )
+                                        )
+                                ):
+                            return True
 
-            for volume in volumes:
-                occurrences = [m.start() for m in re.finditer(volume, text)]
-                for occurrence in occurrences:
-                    if volume in text and occurrence - 1 > -1 and \
-                            (
-                                    (
-                                            text[occurrence - 1].isdigit() and
-                                            (
-                                                    occurrence + len(volume) == len(text) or
-                                                    text[occurrence + len(volume)] == ' '
-                                            )
-                                    ) or
-                                    (
-                                            text[occurrence - 1] == ' ' and
-                                            occurrence - 2 > -1 and
-                                            text[occurrence - 2].isdigit() and
-                                            (
-                                                    occurrence + len(volume) == len(text) or
-                                                    text[occurrence + len(volume)] == ' '
-                                            )
-                                    )
-                            ):
-                        return True
-            for quantity in quantities:
-                occurrences = [m.start() for m in re.finditer(quantity, text)]
-                for occurrence in occurrences:
-                    if quantity in text and occurrence - 1 > -1 and \
-                            (
-                                    (
-                                            text[occurrence - 1].isdigit() and
-                                            (
-                                                    occurrence + len(quantity) == len(text) or
-                                                    text[occurrence + len(quantity)] == ' '
-                                            )
-                                    ) or
-                                    (
-                                            text[occurrence - 1] == ' ' and
-                                            occurrence - 2 > -1 and
-                                            text[occurrence - 2].isdigit() and
-                                            (
-                                                    occurrence + len(quantity) == len(text) or
-                                                    text[occurrence + len(quantity)] == ' '
-                                            )
-                                    )
-                            ):
-                        return True
             for word in words:
                 if word in text and text.find(word) - 1 > -1 and text[text.find(word) - 1] == ' ' and \
                         (
