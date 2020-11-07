@@ -50,7 +50,7 @@ class Bim:
                     continue
                 counter = 0
                 return BeautifulSoup(page.content, "lxml")
-            except Exception as e:  # try always if some connection error occurred
+            except requests.exceptions.RequestException as e:  # try always if some connection error occurred
                 print('-', end='')
         print('')
         return BeautifulSoup('', "lxml")
