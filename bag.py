@@ -1,5 +1,6 @@
 import json
 import re
+from multiprocessing import Pool
 from urllib.parse import urljoin
 
 import requests
@@ -60,29 +61,35 @@ class Bim:
         product_contents = page_content.select(".product:not(.justImage)")
         print(len(product_contents), 'aktuels found!\n')
 
-        for product_id, product_content in zip(range(len(product_contents)), product_contents):
-            product = Bim.get_product(product_content)
-            self.products[product_id] = product
+        with Pool() as pool:
+            processes = []
+            for product_id, product_content in zip(range(len(product_contents)), product_contents):
+                processes.append(pool.apply_async(Bim.get_product, (product_id, str(product_content))))
 
-            # for some special usages
-            kiyasla_style = {"u": Bim.Product.get_product_name(product, 120),
-                             "f": product['price'],
-                             "k": product['image']}
-            self.kiyasla_products.append(kiyasla_style)
+            for process in processes:
+                product_id, product = process.get()
+                self.products[product_id] = product
 
-            if product['name'].strip() not in self.product_names:
-                self.product_names.append(product['name'].strip())
-            print(kiyasla_style['u'], kiyasla_style['f'])
+                # for some special usages
+                kiyasla_style = {"u": Bim.Product.get_product_name(product, 120),
+                                 "f": product['price'],
+                                 "k": product['image']}
+                self.kiyasla_products.append(kiyasla_style)
+
+                if product['name'].strip() not in self.product_names:
+                    self.product_names.append(product['name'].strip())
+                print(kiyasla_style['u'], kiyasla_style['f'])
 
         return self.products
 
     @staticmethod
-    def get_product(product_content):
+    def get_product(product_id, product_content):
+        product_content = BeautifulSoup(product_content, "lxml")
         product = Bim.add_features_from_list(product_content)
         product = Bim.add_features_from_detail(product)
         product['features'] = Bim.Product.get_optimized_list(product['features'])
 
-        return product
+        return product_id, product
 
     @staticmethod
     def add_features_from_list(product_content):
