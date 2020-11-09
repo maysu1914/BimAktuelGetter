@@ -8,33 +8,35 @@ from bs4 import BeautifulSoup
 
 
 class File:
+    filename = 'file'
 
-    @staticmethod
-    def export(filename, data):
-        with open('{name}.txt'.format(name=filename), 'w', encoding='utf-8') as file:
+    def __init__(self, filename=filename):
+        self.filename = filename
+        self.append_to_filename()
+
+    def append_to_filename(self):
+        self.filename += input('Filename: {}'.format(self.filename))
+
+    def export(self, data):
+        with open('{name}.txt'.format(name=self.filename), 'w', encoding='utf-8') as file:
             file.write(data)
-        print('\n{name}.txt olusturuldu.'.format(name=filename))
+        print('\n{name}.txt created.'.format(name=self.filename))
 
 
 class Bim:
     url = 'https://www.bim.com.tr/default.aspx'
-    aktuel_query = '?Bim_AktuelTarihKey='
+    campaign_query = '?Bim_AktuelTarihKey='
 
     def __init__(self):
-        self.aktuel_key = self.input_aktuel_key()
-        self.aktuel_name = self.input_aktuel_name()
+        self.campaign_id = self.input_campaign_id()
         self.products = {}  # '1':{'brand':'', 'name':'', 'features':[], 'price': '', 'image':'', 'url':''}
         self.kiyasla_products = []
         self.product_names = []  # for a special need
         self.product_operations = self.Product()
 
     @staticmethod
-    def input_aktuel_key():
-        return input('AktuelTarihKey= ')
-
-    @staticmethod
-    def input_aktuel_name():
-        return input('AktuelTarih= ')
+    def input_campaign_id():
+        return input('Campaign ID: ')
 
     @staticmethod
     def get_content(url):
@@ -57,9 +59,12 @@ class Bim:
         return BeautifulSoup('', "lxml")
 
     def get_all_products(self):
-        page_content = self.get_content(self.url + self.aktuel_query + self.aktuel_key)
+        page_content = self.get_content(self.url + self.campaign_query + self.campaign_id)
         product_contents = page_content.select(".product:not(.justImage)")
-        print(len(product_contents), 'aktuels found!\n')
+        campaign_name = page_content.select("a.active.subButton")[0].text.strip() \
+            if page_content.select("a.active.subButton") else 'Campaign name not found.'
+        print(campaign_name)
+        print(len(product_contents), 'products found!\n')
 
         with Pool() as pool:
             processes = []
@@ -263,7 +268,6 @@ if __name__ == "__main__":
 
     kiyasla_datas = bim_aktuels.kiyasla_products
     final_output = bim_aktuels.product_names
-
-    print('\n' + ', '.join(final_output))
-    input('\nKaydetmek için bir tusa basin...')
-    File.export('bim_hazir_' + bim_aktuels.aktuel_name, str(json.dumps(kiyasla_datas)).replace('"u": ', '"u":ur'))
+    if kiyasla_datas:
+        print('\n{}\n'.format(', '.join(final_output)))
+        File('bim_hazir_').export(str(json.dumps(kiyasla_datas)).replace('"u": ', '"u":ur'))
