@@ -270,4 +270,4 @@ if __name__ == "__main__":
     final_output = bim_aktuels.product_names
     if kiyasla_datas:
         print('\n{}\n'.format(', '.join(final_output)))
-        File('bim_hazir_').export(str(json.dumps(kiyasla_datas)).replace('"u": ', '"u":ur'))
+        File('bim_ready_').export(str(json.dumps(kiyasla_datas)).replace('"u": ', '"u":ur'))
