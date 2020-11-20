@@ -1,7 +1,7 @@
 import json
 import re
 from multiprocessing import Pool
-from urllib.parse import urljoin
+from urllib.parse import urljoin, quote
 
 import requests
 from bs4 import BeautifulSoup
@@ -143,7 +143,7 @@ class Bim:
         try:
             page_content = Bim.get_content(product['url'])
             product_detail = page_content.find("div", "detailArea")
-            product_image = urljoin(Bim.url, product_detail.find("a", "fotoZoom")['data-src'])
+            product_image = urljoin(Bim.url, quote(product_detail.find("a", "fotoZoom")['data-src']))
             features = []
 
             for feature in product_detail.find("div", 'textArea').text.split('\n'):  # ÜRÜN ÖZELLIKLERINI ÇEKMEK
