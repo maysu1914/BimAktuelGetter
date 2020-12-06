@@ -238,7 +238,7 @@ class Bim:
                         char_counter = char_counter + len(feature) + 2
                         features_to_add.append(feature)
                     else:
-                        break
+                        continue
                 return final_name + ' - ' + ', '.join(features_to_add)
 
         @staticmethod
