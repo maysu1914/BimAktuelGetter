@@ -1,4 +1,5 @@
 from concurrent.futures.thread import ThreadPoolExecutor
+from concurrent import futures
 from urllib.parse import urljoin, quote
 
 import requests
@@ -11,6 +12,7 @@ class Bim:
     campaign_query = '?Bim_AktuelTarihKey='
 
     def __init__(self, campaign_id):
+        self.executor = ThreadPoolExecutor()
         self.campaign_id = campaign_id
         self.products = {}  # '1':{'brand':'', 'name':'', 'features':[], 'price': '', 'image':'', 'url':''}
         self.kiyasla_products = []
@@ -46,9 +48,9 @@ class Bim:
 
         threads = []
         for product_id, product_content in zip(range(len(product_contents)), product_contents):
-            threads.append(ThreadPoolExecutor().submit(Bim.get_product, product_id, str(product_content)))
+            threads.append(self.executor.submit(Bim.get_product, product_id, str(product_content)))
 
-        for thread in threads:
+        for thread in futures.as_completed(threads):
             product_id, product = thread.result()
             self.products[product_id] = product
 
