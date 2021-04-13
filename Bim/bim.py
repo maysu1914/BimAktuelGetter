@@ -50,7 +50,7 @@ class Bim:
         for product_id, product_content in zip(range(len(product_contents)), product_contents):
             threads.append(self.executor.submit(Bim.get_product, product_id, str(product_content)))
 
-        for thread in futures.as_completed(threads):
+        for thread in threads:
             product_id, product = thread.result()
             self.products[product_id] = product
 
